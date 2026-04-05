@@ -69,6 +69,14 @@ func (c *ConfigService) AddServer(name string, s Server) error {
 	return c.flush()
 }
 
+func (c *ConfigService) RemoveServer(name string) error {
+	if !c.HasServer(name) {
+		return fmt.Errorf("server %q not found", name)
+	}
+	delete(c.servers, name)
+	return c.flush()
+}
+
 func (c *ConfigService) flush() error {
 	data, err := json.MarshalIndent(c.servers, "", "  ")
 	if err != nil {

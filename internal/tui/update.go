@@ -22,6 +22,11 @@ type serverAddedMsg struct {
 	servers map[string]services.Server
 }
 
+type serverRemovedMsg struct {
+	name    string
+	servers map[string]services.Server
+}
+
 type clearFlashMsg struct{}
 
 type storageFilesMsg struct {
@@ -177,6 +182,21 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FileOpSuccess = ""
 		return m, nil
 
+	case pages.RemoveServerPageMsg:
+		m.Page = pageRemoveServer
+		m.Selected = 0
+		return m, nil
+
+	case serverRemovedMsg:
+		m.Servers = msg.servers
+		m.ServerNames = sortedServerNames(msg.servers)
+		m.NoServers = len(msg.servers) == 0
+		m.Page = pageConfig
+		m.MenuItems = pages.ConfigMenuItems()
+		m.Selected = 0
+		m.FlashMsg = "✓  \"" + msg.name + "\" removed."
+		return m, clearFlashAfter(2 * time.Second)
+
 	case pages.CleanAllPageMsg:
 		m.Page = pageCleanAll
 		m.CleanInput = newCleanInput()
@@ -266,6 +286,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Page == pageCleanAll {
 			return m.updateCleanAll(msg)
 		}
+		if m.Page == pageRemoveServer {
+			return m.updateRemoveServer(msg)
+		}
 
 		switch msg.String() {
 		case "up", "k":
@@ -288,7 +311,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return pages.AddServerPageMsg{} }
 			case "server":
 				return m, func() tea.Msg { return pages.SelectServerPageMsg{} }
-			// TODO: "edit", "remove"
+			case "remove":
+				return m, func() tea.Msg { return pages.RemoveServerPageMsg{} }
+			// TODO: "edit"
 			}
 		case "ctrl+c":
 			m.Quitting = true
@@ -470,6 +495,42 @@ func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	return m, nil
+}
+
+func (m TUIInterface) updateRemoveServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	last := len(m.ServerNames) - 1
+	switch msg.String() {
+	case "up", "k":
+		if m.Selected > 0 {
+			m.Selected--
+		}
+	case "down", "j":
+		if m.Selected < last {
+			m.Selected++
+		}
+	case "enter":
+		if m.Selected >= 0 && m.Selected < len(m.ServerNames) {
+			name := m.ServerNames[m.Selected]
+			if err := m.Services.Config.RemoveServer(name); err != nil {
+				// surface error via flash on config page
+				m.Page = pageConfig
+				m.MenuItems = pages.ConfigMenuItems()
+				m.Selected = 0
+				m.FlashMsg = "✗  " + err.Error()
+				return m, clearFlashAfter(3 * time.Second)
+			}
+			servers := m.Services.Config.Servers()
+			return m, func() tea.Msg {
+				return serverRemovedMsg{name: name, servers: servers}
+			}
+		}
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		return m, func() tea.Msg { return pages.ConfigPageMsg{} }
+	}
 	return m, nil
 }
 

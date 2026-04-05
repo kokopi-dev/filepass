@@ -38,6 +38,8 @@ func (m TUIInterface) subtitle() string {
 		return "Send File"
 	case pageCleanAll:
 		return "Clean All"
+	case pageRemoveServer:
+		return "Remove Server"
 	default:
 		return "Secure file transfer"
 	}
@@ -71,6 +73,8 @@ func (m TUIInterface) View() tea.View {
 		body = m.viewSend()
 	case pageCleanAll:
 		body = m.viewCleanAll()
+	case pageRemoveServer:
+		body = m.viewRemoveServer()
 	default:
 		body = m.viewMenu()
 	}
@@ -112,6 +116,12 @@ func (m TUIInterface) View() tea.View {
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageRemoveServer:
+		footerStr = footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "remove") +
 			footerSep() +
 			footerHint("esc", "back")
 	case pageCleanAll:
@@ -260,6 +270,17 @@ func (m TUIInterface) viewSend() string {
 	list := lipgloss.JoinVertical(lipgloss.Left, rows...)
 
 	return lipgloss.JoinVertical(lipgloss.Left, crumb, queryLine, list)
+}
+
+func (m TUIInterface) viewRemoveServer() string {
+	if len(m.ServerNames) == 0 {
+		return styles.StatusWarnStyle.Render("⚠  No servers configured.")
+	}
+	var rows []string
+	for i, name := range m.ServerNames {
+		rows = append(rows, styles.ServerRowStyle(i == m.Selected, name))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (m TUIInterface) viewCleanAll() string {

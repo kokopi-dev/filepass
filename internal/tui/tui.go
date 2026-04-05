@@ -18,6 +18,7 @@ const (
 	pageFileAction
 	pageSend
 	pageCleanAll
+	pageRemoveServer
 )
 
 type TUIInterface struct {

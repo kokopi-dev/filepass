@@ -25,6 +25,13 @@ func (m TUIInterface) subtitle() string {
 		return "Add Server"
 	case pageSelectServer:
 		return "Select Server"
+	case pageServerActions:
+		if m.ActiveServer != "" {
+			return m.ActiveServer
+		}
+		return "Server"
+	case pageFileAction:
+		return m.ActiveFile
 	default:
 		return "Secure file transfer"
 	}
@@ -50,6 +57,10 @@ func (m TUIInterface) View() tea.View {
 		body = m.viewAddServer()
 	case pageSelectServer:
 		body = m.viewSelectServer()
+	case pageServerActions:
+		body = m.viewServerActions()
+	case pageFileAction:
+		body = m.viewFileAction()
 	default:
 		body = m.viewMenu()
 	}
@@ -77,6 +88,20 @@ func (m TUIInterface) View() tea.View {
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "connect") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageServerActions:
+		footerStr = footerHint("tab", "switch pane") +
+			footerSep() +
+			footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "select") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageFileAction:
+		footerStr = footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "confirm") +
 			footerSep() +
 			footerHint("esc", "back")
 	default:
@@ -130,6 +155,49 @@ func (m TUIInterface) viewMenu() string {
 	return menu
 }
 
+func (m TUIInterface) viewServerActions() string {
+	// action menu — single column, unfocused when file pane is active
+	var actionRows []string
+	for i, item := range m.MenuItems {
+		active := !m.FileFocused && i == m.Selected
+		actionRows = append(actionRows, styles.MenuItemStyle(active, false).Render(item.Label))
+	}
+	actions := lipgloss.JoinVertical(lipgloss.Left, actionRows...)
+
+	// file list section below, separated by a top border
+	var fileRows []string
+	switch {
+	case m.StorageLoading:
+		fileRows = append(fileRows, styles.StatusWarnStyle.Render("  loading…"))
+	case m.StorageErr != nil:
+		fileRows = append(fileRows, styles.StatusErrStyle.Render("✗  "+m.StorageErr.Error()))
+	case len(m.StorageFiles) == 0:
+		fileRows = append(fileRows, styles.StorageEmptyStyle.Render("  no files in storage"))
+	default:
+		for i, f := range m.StorageFiles {
+			active := m.FileFocused && i == m.FileSelected
+			fileRows = append(fileRows, styles.FileItemStyle(active).Render(f))
+		}
+	}
+	fileList := lipgloss.JoinVertical(lipgloss.Left, fileRows...)
+	fileSection := styles.StorageFileSectionStyle.Render(fileList)
+
+	return lipgloss.JoinVertical(lipgloss.Left, actions, fileSection)
+}
+
+func (m TUIInterface) viewFileAction() string {
+	// filename shown as a dim label above the menu
+	filenameLabel := styles.FilenameLabelStyle.Render(m.ActiveFile)
+
+	var menuRows []string
+	for i, item := range m.MenuItems {
+		menuRows = append(menuRows, styles.MenuItemStyle(i == m.Selected, false).Render(item.Label))
+	}
+	menu := lipgloss.JoinVertical(lipgloss.Left, menuRows...)
+
+	return lipgloss.JoinVertical(lipgloss.Left, filenameLabel, menu)
+}
+
 func (m TUIInterface) viewSelectServer() string {
 	if len(m.ServerNames) == 0 {
 		return styles.StatusWarnStyle.Render("⚠  No servers configured.")
@@ -155,16 +223,13 @@ func (m TUIInterface) viewAddServer() string {
 	}
 	form := lipgloss.JoinVertical(lipgloss.Left, rows...)
 
-	// required legend
 	legend := styles.FieldLegendStyle.Render("* required")
 
-	// form error (duplicate name, etc.)
 	var errLine string
 	if m.FormErr != "" {
 		errLine = styles.StatusErrStyle.Render(m.FormErr)
 	}
 
-	// save / back buttons
 	saveBtn := styles.ButtonStyle(f.focused == fieldSave, f.canSave()).Render("Save")
 	backBtn := styles.ButtonStyle(f.focused == fieldBack, true).Render("Back")
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, saveBtn, "  ", backBtn)

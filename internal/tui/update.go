@@ -23,6 +23,22 @@ type serverAddedMsg struct {
 
 type clearFlashMsg struct{}
 
+type storageFilesMsg struct {
+	files []string
+	err   error
+}
+
+func checkStorageCmd(store *services.ServicesStore, serverName string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return storageFilesMsg{err: err}
+		}
+		files, err := storage.Check()
+		return storageFilesMsg{files: files, err: err}
+	}
+}
+
 func clearFlashAfter(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg {
 		return clearFlashMsg{}
@@ -82,6 +98,32 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Selected = 0
 		return m, nil
 
+	case pages.ServerActionsPageMsg:
+		m.Page = pageServerActions
+		m.ActiveServer = msg.ServerName
+		m.MenuItems = pages.ServerActionItems()
+		m.Selected = 0
+		m.FileSelected = 0
+		m.FileFocused = false
+		m.StorageFiles = nil
+		m.StorageErr = nil
+		m.StorageLoading = true
+		return m, checkStorageCmd(m.Services, msg.ServerName)
+
+	case pages.FileActionPageMsg:
+		m.Page = pageFileAction
+		m.ActiveFile = msg.Filename
+		m.MenuItems = pages.FileActionItems()
+		m.Selected = 0
+		return m, nil
+
+	case storageFilesMsg:
+		m.StorageLoading = false
+		m.StorageFiles = msg.files
+		m.StorageErr = msg.err
+		m.FileSelected = 0
+		return m, nil
+
 	case configLoadedMsg:
 		if msg.err != nil {
 			m.InitErr = msg.err
@@ -112,13 +154,17 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		// add server form has its own key handling
 		if m.Page == pageAddServer {
 			return m.updateAddServer(msg)
 		}
-		// server list has its own key handling
 		if m.Page == pageSelectServer {
 			return m.updateSelectServer(msg)
+		}
+		if m.Page == pageServerActions {
+			return m.updateServerActions(msg)
+		}
+		if m.Page == pageFileAction {
+			return m.updateFileAction(msg)
 		}
 
 		switch msg.String() {
@@ -169,6 +215,122 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "tab":
+		// toggle focus between action menu and file list
+		if len(m.StorageFiles) > 0 {
+			m.FileFocused = !m.FileFocused
+		}
+
+	case "up", "k":
+		if m.FileFocused {
+			if m.FileSelected > 0 {
+				m.FileSelected--
+			}
+		} else {
+			if m.Selected > 0 {
+				m.Selected--
+			}
+		}
+
+	case "down", "j":
+		if m.FileFocused {
+			if m.FileSelected < len(m.StorageFiles)-1 {
+				m.FileSelected++
+			}
+		} else {
+			if m.Selected < len(m.MenuItems)-1 {
+				m.Selected++
+			}
+		}
+
+	case "enter":
+		if m.FileFocused && len(m.StorageFiles) > 0 {
+			file := m.StorageFiles[m.FileSelected]
+			server := m.ActiveServer
+			return m, func() tea.Msg {
+				return pages.FileActionPageMsg{ServerName: server, Filename: file}
+			}
+		}
+		switch m.MenuItems[m.Selected].Key {
+		case "send":
+			// TODO: navigate to send page
+		case "get":
+			// TODO: navigate to get page (bulk)
+		case "clean":
+			// TODO: navigate to clean page (bulk)
+		}
+
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+
+	case "esc":
+		return m, func() tea.Msg { return pages.SelectServerPageMsg{} }
+	}
+
+	return m, nil
+}
+
+func (m TUIInterface) updateFileAction(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "up", "k":
+		if m.Selected > 0 {
+			m.Selected--
+		}
+	case "down", "j":
+		if m.Selected < len(m.MenuItems)-1 {
+			m.Selected++
+		}
+	case "enter":
+		server := m.ActiveServer
+		file := m.ActiveFile
+		switch m.MenuItems[m.Selected].Key {
+		case "get":
+			_ = server
+			_ = file
+			// TODO: implement get
+		case "delete":
+			_ = server
+			_ = file
+			// TODO: implement delete
+		}
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		server := m.ActiveServer
+		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+	}
+	return m, nil
+}
+
+func (m TUIInterface) updateSelectServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	last := len(m.ServerNames) - 1
+	switch msg.String() {
+	case "up", "k":
+		if m.Selected > 0 {
+			m.Selected--
+		}
+	case "down", "j":
+		if m.Selected < last {
+			m.Selected++
+		}
+	case "enter":
+		if m.Selected >= 0 && m.Selected < len(m.ServerNames) {
+			name := m.ServerNames[m.Selected]
+			return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: name} }
+		}
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		return m, func() tea.Msg { return pages.HomePageMsg{} }
+	}
+	return m, nil
+}
+
 func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	f := m.Form
 
@@ -182,16 +344,13 @@ func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "enter":
-		// on an input field, advance to next
 		if f.focused < fieldSave {
 			m.Form = f.focusNext()
 			return m, nil
 		}
-		// on save button
 		if f.focused == fieldSave {
 			return m.submitAddServer()
 		}
-		// on back button
 		if f.focused == fieldBack {
 			return m, func() tea.Msg { return pages.ConfigPageMsg{} }
 		}
@@ -201,7 +360,6 @@ func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m, tea.Quit
 
 	case "ctrl+v":
-		// OSC52 clipboard read; result arrives as tea.ClipboardMsg
 		if f.focused < len(f.inputs) {
 			return m, tea.ReadClipboard
 		}
@@ -211,11 +369,9 @@ func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m, func() tea.Msg { return pages.ConfigPageMsg{} }
 	}
 
-	// route keystrokes to the focused input
 	if f.focused < len(f.inputs) {
 		var cmd tea.Cmd
 		f.inputs[f.focused], cmd = f.inputs[f.focused].Update(msg)
-		// clear duplicate-name error when user edits the name field
 		if f.focused == fieldName {
 			m.FormErr = ""
 		}
@@ -238,28 +394,6 @@ func (m TUIInterface) updateAddServerPaste(text string) (tea.Model, tea.Cmd) {
 	}
 	m.Form = f
 	return m, cmd
-}
-
-func (m TUIInterface) updateSelectServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	last := len(m.ServerNames) - 1
-	switch msg.String() {
-	case "up", "k":
-		if m.Selected > 0 {
-			m.Selected--
-		}
-	case "down", "j":
-		if m.Selected < last {
-			m.Selected++
-		}
-	case "enter":
-		// TODO: connect to selected server
-	case "ctrl+c":
-		m.Quitting = true
-		return m, tea.Quit
-	case "esc":
-		return m, func() tea.Msg { return pages.HomePageMsg{} }
-	}
-	return m, nil
 }
 
 func (m TUIInterface) submitAddServer() (tea.Model, tea.Cmd) {

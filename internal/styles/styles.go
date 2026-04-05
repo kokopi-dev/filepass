@@ -117,6 +117,35 @@ var (
 	serverRowNameActiveStyle = lipgloss.NewStyle().
 					Bold(true).
 					Foreground(lipgloss.Color("75"))
+
+	// Storage file list
+	StorageFileSectionStyle = lipgloss.NewStyle().
+					BorderTop(true).
+					BorderStyle(lipgloss.NormalBorder()).
+					BorderForeground(lipgloss.Color("237")).
+					MarginTop(1).
+					PaddingTop(1).
+					Width(44)
+
+	StorageEmptyStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("243")).
+				Italic(true)
+
+	fileItemInactive = lipgloss.NewStyle().
+				PaddingLeft(4).
+				Foreground(lipgloss.Color("252")).
+				Width(44)
+
+	fileItemActive = lipgloss.NewStyle().
+				PaddingLeft(2).
+				Foreground(lipgloss.Color("75")).
+				Bold(true).
+				Width(44).
+				SetString("▸ ")
+
+	FilenameLabelStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("243")).
+				MarginBottom(1)
 )
 
 func MenuItemStyle(active, disabled bool) lipgloss.Style {
@@ -148,6 +177,14 @@ func ButtonStyle(focused, enabled bool) lipgloss.Style {
 	default:
 		return buttonInactive
 	}
+}
+
+// FileItemStyle returns the style for a file list row.
+func FileItemStyle(active bool) lipgloss.Style {
+	if active {
+		return fileItemActive
+	}
+	return fileItemInactive
 }
 
 // ServerRowStyle renders a single-line server list entry showing only the server name.

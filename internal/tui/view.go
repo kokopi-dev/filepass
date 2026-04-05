@@ -137,16 +137,12 @@ func (m TUIInterface) viewSelectServer() string {
 
 	var rows []string
 	for i, name := range m.ServerNames {
-		srv := m.Servers[name]
-		detail := srv.User + "@" + srv.Host
-		if srv.Port != "" {
-			detail += ":" + srv.Port
-		}
-		row := styles.ServerRowStyle(i == m.Selected, name, detail)
-		rows = append(rows, row)
+		rows = append(rows, styles.ServerRowStyle(i == m.Selected, name))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
+
+func (m TUIInterface) viewAddServer() string {
 	f := m.Form
 	labels := []string{"Name", "Host", "User", "Private Key Path", "Port"}
 	required := []bool{true, true, true, true, false}

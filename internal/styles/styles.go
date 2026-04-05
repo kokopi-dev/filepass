@@ -117,12 +117,6 @@ var (
 	serverRowNameActiveStyle = lipgloss.NewStyle().
 					Bold(true).
 					Foreground(lipgloss.Color("75"))
-
-	serverRowDetailStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("243"))
-
-	serverRowDetailActiveStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color("117"))
 )
 
 func MenuItemStyle(active, disabled bool) lipgloss.Style {
@@ -156,22 +150,10 @@ func ButtonStyle(focused, enabled bool) lipgloss.Style {
 	}
 }
 
-// ServerRowStyle renders a two-line server list entry: bold name on top,
-// dim "user@host[:port]" detail below.
-func ServerRowStyle(active bool, name, detail string) string {
-	nameStyle := serverRowNameStyle
-	detailStyle := serverRowDetailStyle
-	base := serverRowBase
-	prefix := "  "
+// ServerRowStyle renders a single-line server list entry showing only the server name.
+func ServerRowStyle(active bool, name string) string {
 	if active {
-		nameStyle = serverRowNameActiveStyle
-		detailStyle = serverRowDetailActiveStyle
-		base = serverRowBaseActive
-		prefix = "▸ "
+		return serverRowBaseActive.Render(serverRowNameActiveStyle.Render("▸ " + name))
 	}
-	row := lipgloss.JoinVertical(lipgloss.Left,
-		nameStyle.Render(prefix+name),
-		detailStyle.Render("  "+detail),
-	)
-	return base.Render(row)
+	return serverRowBase.Render(serverRowNameStyle.Render("  " + name))
 }

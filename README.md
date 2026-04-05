@@ -16,3 +16,8 @@ Originally hacked with bash, re-written in golang into a TUI.
 filepass
 ```
 
+## Sample
+
+![demo1](assets/demo1.webp)
+
+![demo2](assets/demo2.webp)

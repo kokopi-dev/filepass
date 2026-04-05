@@ -5,13 +5,25 @@ import (
 	"filepass/internal/services"
 )
 
+type page int
+
+const (
+	pageHome page = iota
+	pageConfig
+	pageAddServer
+)
+
 type TUIInterface struct {
 	Services     *services.ServicesStore
+	Page         page
 	MenuItems    []pages.MenuItem
 	Selected     int
 	Servers      map[string]services.Server
 	NoServers    bool
 	InitErr      error
+	FlashMsg     string
+	Form         addServerForm
+	FormErr      string // inline field error (e.g. duplicate name)
 	Quitting     bool
 	WindowWidth  int
 	WindowHeight int
@@ -20,6 +32,7 @@ type TUIInterface struct {
 func NewTUIInterface(store *services.ServicesStore) TUIInterface {
 	return TUIInterface{
 		Services:  store,
+		Page:      pageHome,
 		MenuItems: pages.HomeMenuItems(),
 	}
 }

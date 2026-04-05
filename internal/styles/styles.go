@@ -34,7 +34,50 @@ var (
 	menuItemInactive = menuItemBase.
 				Foreground(lipgloss.Color("245"))
 
+	menuItemDisabled = menuItemBase.
+				Foreground(lipgloss.Color("240")).
+				PaddingLeft(4)
+
+	// Form fields
+	fieldLabelRequired = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("75")).
+				Bold(true).
+				MarginTop(1)
+
+	fieldLabelOptional = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("245")).
+				MarginTop(1)
+
+	FieldLegendStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240")).
+				Italic(true).
+				MarginTop(1)
+
+	// Buttons
+	buttonActive = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("232")).
+			Background(lipgloss.Color("75")).
+			Bold(true).
+			Padding(0, 2).
+			MarginTop(1)
+
+	buttonInactive = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("232")).
+			Background(lipgloss.Color("240")).
+			Padding(0, 2).
+			MarginTop(1)
+
+	buttonLocked = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("238")).
+			Background(lipgloss.Color("235")).
+			Padding(0, 2).
+			MarginTop(1)
+
 	// Status lines
+	StatusOKStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("86")).
+			MarginTop(1)
+
 	StatusWarnStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("221")).
 			MarginTop(1)
@@ -57,10 +100,33 @@ var (
 	FooterDescStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
 )
 
-// MenuItemStyle returns the appropriate style for a menu row.
-func MenuItemStyle(active bool) lipgloss.Style {
-	if active {
+func MenuItemStyle(active, disabled bool) lipgloss.Style {
+	switch {
+	case disabled:
+		return menuItemDisabled
+	case active:
 		return menuItemActive
+	default:
+		return menuItemInactive
 	}
-	return menuItemInactive
+}
+
+func FieldLabelStyle(required bool) lipgloss.Style {
+	if required {
+		return fieldLabelRequired
+	}
+	return fieldLabelOptional
+}
+
+// ButtonStyle returns the style for a button.
+// focused: cursor is on this button. enabled: button is interactive.
+func ButtonStyle(focused, enabled bool) lipgloss.Style {
+	switch {
+	case !enabled:
+		return buttonLocked
+	case focused:
+		return buttonActive
+	default:
+		return buttonInactive
+	}
 }

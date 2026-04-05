@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -53,4 +54,25 @@ func NewConfigService() (*ConfigService, error) {
 
 func (c *ConfigService) Servers() map[string]Server {
 	return c.servers
+}
+
+func (c *ConfigService) HasServer(name string) bool {
+	_, ok := c.servers[name]
+	return ok
+}
+
+func (c *ConfigService) AddServer(name string, s Server) error {
+	if c.HasServer(name) {
+		return fmt.Errorf("server %q already exists", name)
+	}
+	c.servers[name] = s
+	return c.flush()
+}
+
+func (c *ConfigService) flush() error {
+	data, err := json.MarshalIndent(c.servers, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(c.path, data, 0o600)
 }

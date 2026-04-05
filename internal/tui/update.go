@@ -104,7 +104,7 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.MenuItems = pages.ServerActionItems()
 		m.Selected = 0
 		m.FileSelected = 0
-		m.FileFocused = false
+		m.FileFocused = true
 		m.StorageFiles = nil
 		m.StorageErr = nil
 		m.StorageLoading = true
@@ -256,10 +256,8 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 		switch m.MenuItems[m.Selected].Key {
 		case "send":
 			// TODO: navigate to send page
-		case "get":
-			// TODO: navigate to get page (bulk)
 		case "clean":
-			// TODO: navigate to clean page (bulk)
+			// TODO: navigate to clean all page
 		}
 
 	case "ctrl+c":

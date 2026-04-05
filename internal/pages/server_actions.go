@@ -7,7 +7,6 @@ type ServerActionsPageMsg struct {
 func ServerActionItems() []MenuItem {
 	return []MenuItem{
 		{Label: "Send", Key: "send"},
-		{Label: "Get", Key: "get"},
-		{Label: "Clean", Key: "clean"},
+		{Label: "Clean All", Key: "clean"},
 	}
 }

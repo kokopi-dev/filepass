@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"filepass/internal/styles"
 
 	tea "charm.land/bubbletea/v2"
@@ -34,6 +36,8 @@ func (m TUIInterface) subtitle() string {
 		return m.ActiveFile
 	case pageSend:
 		return "Send File"
+	case pageCleanAll:
+		return "Clean All"
 	default:
 		return "Secure file transfer"
 	}
@@ -65,6 +69,8 @@ func (m TUIInterface) View() tea.View {
 		body = m.viewFileAction()
 	case pageSend:
 		body = m.viewSend()
+	case pageCleanAll:
+		body = m.viewCleanAll()
 	default:
 		body = m.viewMenu()
 	}
@@ -106,6 +112,10 @@ func (m TUIInterface) View() tea.View {
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageCleanAll:
+		footerStr = footerHint("enter", "confirm") +
 			footerSep() +
 			footerHint("esc", "back")
 	case pageSend:
@@ -250,6 +260,30 @@ func (m TUIInterface) viewSend() string {
 	list := lipgloss.JoinVertical(lipgloss.Left, rows...)
 
 	return lipgloss.JoinVertical(lipgloss.Left, crumb, queryLine, list)
+}
+
+func (m TUIInterface) viewCleanAll() string {
+	fileCount := len(m.StorageFiles)
+	warning := styles.CleanWarningStyle.Render(
+		fmt.Sprintf("This will permanently delete all %d file(s) from remote storage.", fileCount),
+	)
+
+	promptLabel := styles.FieldLabelStyle(true).Render("Type \"yes\" to confirm")
+	input := m.CleanInput.View()
+
+	var statusLine string
+	switch {
+	case m.CleanOpLoading:
+		statusLine = styles.StatusWarnStyle.Render("  deleting…")
+	case m.CleanOpErr != nil:
+		statusLine = styles.StatusErrStyle.Render("✗  " + m.CleanOpErr.Error())
+	}
+
+	parts := []string{warning, promptLabel, input}
+	if statusLine != "" {
+		parts = append(parts, statusLine)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
 
 func (m TUIInterface) viewSelectServer() string {

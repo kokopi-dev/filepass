@@ -77,6 +77,14 @@ func (s *StorageService) Send(localPaths []string) error {
 
 // CleanAll removes all files from remote storage.
 func (s *StorageService) CleanAll() error {
-	// TODO: implement
-	return fmt.Errorf("clean all: not yet implemented")
+	cmd := SSHCmd(s.server,
+		"rm -f "+defaultStoragePath+"/*",
+	)
+	debugLog("CleanAll | args: %v", cmd.Args)
+	out, err := cmd.CombinedOutput()
+	debugLog("CleanAll | exit_err: %v | output: %q", err, strings.TrimSpace(string(out)))
+	if err != nil {
+		return fmt.Errorf("clean all failed: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }

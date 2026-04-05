@@ -86,6 +86,12 @@ var (
 			Foreground(lipgloss.Color("203")).
 			MarginTop(1)
 
+	CleanWarningStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("203")).
+				Bold(true).
+				MarginBottom(1).
+				Width(44)
+
 	// Footer
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).

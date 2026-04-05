@@ -8,6 +8,7 @@ import (
 	"filepass/internal/pages"
 	"filepass/internal/services"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -58,6 +59,30 @@ func deleteFileCmd(store *services.ServicesStore, serverName, filename string) t
 		}
 		return fileOpMsg{op: "delete", success: "✓  Deleted \"" + filename + "\""}
 	}
+}
+
+type cleanAllMsg struct {
+	err error
+}
+
+func cleanAllCmd(store *services.ServicesStore, serverName string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return cleanAllMsg{err: err}
+		}
+		return cleanAllMsg{err: storage.CleanAll()}
+	}
+}
+
+func newCleanInput() textinput.Model {
+	ti := textinput.New()
+	ti.Placeholder = "yes"
+	ti.Prompt = ""
+	ti.CharLimit = 3
+	ti.SetWidth(10)
+	ti.Focus()
+	return ti
 }
 
 func checkStorageCmd(store *services.ServicesStore, serverName string) tea.Cmd {
@@ -152,6 +177,22 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FileOpSuccess = ""
 		return m, nil
 
+	case pages.CleanAllPageMsg:
+		m.Page = pageCleanAll
+		m.CleanInput = newCleanInput()
+		m.CleanOpLoading = false
+		m.CleanOpErr = nil
+		return m, nil
+
+	case cleanAllMsg:
+		m.CleanOpLoading = false
+		if msg.err != nil {
+			m.CleanOpErr = msg.err
+			return m, nil
+		}
+		server := m.ActiveServer
+		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+
 	case pages.SendPageMsg:
 		m.Page = pageSend
 		m.Picker = newPicker(m.LocalDir)
@@ -221,6 +262,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.Page == pageSend {
 			return m.updateSend(msg)
+		}
+		if m.Page == pageCleanAll {
+			return m.updateCleanAll(msg)
 		}
 
 		switch msg.String() {
@@ -313,7 +357,7 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 		case "send":
 			return m, func() tea.Msg { return pages.SendPageMsg{ServerName: server} }
 		case "clean":
-			// TODO: navigate to clean all page
+			return m, func() tea.Msg { return pages.CleanAllPageMsg{ServerName: server} }
 		}
 
 	case "ctrl+c":
@@ -427,6 +471,36 @@ func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m TUIInterface) updateCleanAll(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.CleanOpLoading {
+		if msg.String() == "ctrl+c" {
+			m.Quitting = true
+			return m, tea.Quit
+		}
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "enter":
+		if m.CleanInput.Value() == "yes" {
+			m.CleanOpLoading = true
+			m.CleanOpErr = nil
+			return m, cleanAllCmd(m.Services, m.ActiveServer)
+		}
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		server := m.ActiveServer
+		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+	}
+
+	// route all other keys to the text input
+	var cmd tea.Cmd
+	m.CleanInput, cmd = m.CleanInput.Update(msg)
+	return m, cmd
 }
 
 func (m TUIInterface) updateSelectServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

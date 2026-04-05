@@ -3,6 +3,8 @@ package tui
 import (
 	"filepass/internal/pages"
 	"filepass/internal/services"
+
+	"charm.land/bubbles/v2/textinput"
 )
 
 type page int
@@ -15,6 +17,7 @@ const (
 	pageServerActions
 	pageFileAction
 	pageSend
+	pageCleanAll
 )
 
 type TUIInterface struct {
@@ -45,6 +48,10 @@ type TUIInterface struct {
 	FileOpLoading bool
 	FileOpErr     error
 	FileOpSuccess string
+	// clean all confirmation page
+	CleanInput    textinput.Model
+	CleanOpLoading bool
+	CleanOpErr    error
 	// send / file picker page
 	Picker picker
 }

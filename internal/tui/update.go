@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -26,6 +27,16 @@ func clearFlashAfter(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg {
 		return clearFlashMsg{}
 	})
+}
+
+// sortedServerNames returns the keys of servers sorted alphabetically.
+func sortedServerNames(servers map[string]services.Server) []string {
+	names := make([]string, 0, len(servers))
+	for name := range servers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // isDisabled reports whether a menu item is non-interactive given current state.
@@ -66,17 +77,24 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FormErr = ""
 		return m, nil
 
+	case pages.SelectServerPageMsg:
+		m.Page = pageSelectServer
+		m.Selected = 0
+		return m, nil
+
 	case configLoadedMsg:
 		if msg.err != nil {
 			m.InitErr = msg.err
 			return m, nil
 		}
 		m.Servers = msg.servers
+		m.ServerNames = sortedServerNames(msg.servers)
 		m.NoServers = len(msg.servers) == 0
 		return m, nil
 
 	case serverAddedMsg:
 		m.Servers = msg.servers
+		m.ServerNames = sortedServerNames(msg.servers)
 		m.NoServers = len(msg.servers) == 0
 		m.Page = pageConfig
 		m.MenuItems = pages.ConfigMenuItems()
@@ -98,6 +116,10 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Page == pageAddServer {
 			return m.updateAddServer(msg)
 		}
+		// server list has its own key handling
+		if m.Page == pageSelectServer {
+			return m.updateSelectServer(msg)
+		}
 
 		switch msg.String() {
 		case "up", "k":
@@ -118,7 +140,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return pages.HomePageMsg{} }
 			case "add":
 				return m, func() tea.Msg { return pages.AddServerPageMsg{} }
-			// TODO: "server", "edit", "remove"
+			case "server":
+				return m, func() tea.Msg { return pages.SelectServerPageMsg{} }
+			// TODO: "edit", "remove"
 			}
 		case "ctrl+c":
 			m.Quitting = true
@@ -129,6 +153,16 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.Quitting = true
 			return m, tea.Quit
+		}
+
+	case tea.PasteMsg:
+		if m.Page == pageAddServer {
+			return m.updateAddServerPaste(msg.Content)
+		}
+
+	case tea.ClipboardMsg:
+		if m.Page == pageAddServer {
+			return m.updateAddServerPaste(msg.Content)
 		}
 	}
 
@@ -166,6 +200,13 @@ func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		m.Quitting = true
 		return m, tea.Quit
 
+	case "ctrl+v":
+		// OSC52 clipboard read; result arrives as tea.ClipboardMsg
+		if f.focused < len(f.inputs) {
+			return m, tea.ReadClipboard
+		}
+		return m, nil
+
 	case "esc":
 		return m, func() tea.Msg { return pages.ConfigPageMsg{} }
 	}
@@ -182,6 +223,42 @@ func (m TUIInterface) updateAddServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) 
 		return m, cmd
 	}
 
+	return m, nil
+}
+
+func (m TUIInterface) updateAddServerPaste(text string) (tea.Model, tea.Cmd) {
+	f := m.Form
+	if f.focused >= len(f.inputs) {
+		return m, nil
+	}
+	var cmd tea.Cmd
+	f.inputs[f.focused], cmd = f.inputs[f.focused].Update(tea.PasteMsg{Content: text})
+	if f.focused == fieldName {
+		m.FormErr = ""
+	}
+	m.Form = f
+	return m, cmd
+}
+
+func (m TUIInterface) updateSelectServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	last := len(m.ServerNames) - 1
+	switch msg.String() {
+	case "up", "k":
+		if m.Selected > 0 {
+			m.Selected--
+		}
+	case "down", "j":
+		if m.Selected < last {
+			m.Selected++
+		}
+	case "enter":
+		// TODO: connect to selected server
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		return m, func() tea.Msg { return pages.HomePageMsg{} }
+	}
 	return m, nil
 }
 

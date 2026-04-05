@@ -11,22 +11,24 @@ const (
 	pageHome page = iota
 	pageConfig
 	pageAddServer
+	pageSelectServer
 )
 
 type TUIInterface struct {
-	Services     *services.ServicesStore
-	Page         page
-	MenuItems    []pages.MenuItem
-	Selected     int
-	Servers      map[string]services.Server
-	NoServers    bool
-	InitErr      error
-	FlashMsg     string
-	Form         addServerForm
-	FormErr      string // inline field error (e.g. duplicate name)
-	Quitting     bool
-	WindowWidth  int
-	WindowHeight int
+	Services       *services.ServicesStore
+	Page           page
+	MenuItems      []pages.MenuItem
+	Selected       int
+	Servers        map[string]services.Server
+	ServerNames    []string // sorted, stable order for list rendering
+	NoServers      bool
+	InitErr        error
+	FlashMsg       string
+	Form           addServerForm
+	FormErr        string // inline field error (e.g. duplicate name)
+	Quitting       bool
+	WindowWidth    int
+	WindowHeight   int
 }
 
 func NewTUIInterface(store *services.ServicesStore) TUIInterface {

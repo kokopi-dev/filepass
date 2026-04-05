@@ -23,6 +23,8 @@ func (m TUIInterface) subtitle() string {
 		return "Configuration"
 	case pageAddServer:
 		return "Add Server"
+	case pageSelectServer:
+		return "Select Server"
 	default:
 		return "Secure file transfer"
 	}
@@ -46,6 +48,8 @@ func (m TUIInterface) View() tea.View {
 	switch m.Page {
 	case pageAddServer:
 		body = m.viewAddServer()
+	case pageSelectServer:
+		body = m.viewSelectServer()
 	default:
 		body = m.viewMenu()
 	}
@@ -60,13 +64,22 @@ func (m TUIInterface) View() tea.View {
 	)
 
 	var footerStr string
-	if m.Page == pageAddServer {
+	switch m.Page {
+	case pageAddServer:
 		footerStr = footerHint("tab/↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
 			footerSep() +
+			footerHint("ctrl+v", "paste") +
+			footerSep() +
 			footerHint("esc", "back")
-	} else {
+	case pageSelectServer:
+		footerStr = footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "connect") +
+			footerSep() +
+			footerHint("esc", "back")
+	default:
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "select") +
@@ -117,7 +130,23 @@ func (m TUIInterface) viewMenu() string {
 	return menu
 }
 
-func (m TUIInterface) viewAddServer() string {
+func (m TUIInterface) viewSelectServer() string {
+	if len(m.ServerNames) == 0 {
+		return styles.StatusWarnStyle.Render("⚠  No servers configured.")
+	}
+
+	var rows []string
+	for i, name := range m.ServerNames {
+		srv := m.Servers[name]
+		detail := srv.User + "@" + srv.Host
+		if srv.Port != "" {
+			detail += ":" + srv.Port
+		}
+		row := styles.ServerRowStyle(i == m.Selected, name, detail)
+		rows = append(rows, row)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
+}
 	f := m.Form
 	labels := []string{"Name", "Host", "User", "Private Key Path", "Port"}
 	required := []bool{true, true, true, true, false}

@@ -117,6 +117,11 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Selected = 0
 		return m, nil
 
+	case pages.SendPageMsg:
+		m.Page = pageSend
+		m.Picker = newPicker(m.LocalDir)
+		return m, nil
+
 	case storageFilesMsg:
 		m.StorageLoading = false
 		m.StorageFiles = msg.files
@@ -165,6 +170,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.Page == pageFileAction {
 			return m.updateFileAction(msg)
+		}
+		if m.Page == pageSend {
+			return m.updateSend(msg)
 		}
 
 		switch msg.String() {
@@ -218,8 +226,7 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "tab":
-		// toggle focus between action menu and file list
-		if len(m.StorageFiles) > 0 {
+		if len(m.StorageFiles) > 0 || !m.StorageLoading {
 			m.FileFocused = !m.FileFocused
 		}
 
@@ -253,9 +260,10 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 				return pages.FileActionPageMsg{ServerName: server, Filename: file}
 			}
 		}
+		server := m.ActiveServer
 		switch m.MenuItems[m.Selected].Key {
 		case "send":
-			// TODO: navigate to send page
+			return m, func() tea.Msg { return pages.SendPageMsg{ServerName: server} }
 		case "clean":
 			// TODO: navigate to clean all page
 		}
@@ -301,6 +309,64 @@ func (m TUIInterface) updateFileAction(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		server := m.ActiveServer
 		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
 	}
+	return m, nil
+}
+
+func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	p := m.Picker
+
+	switch msg.String() {
+	case "up", "k":
+		if p.cursor > 0 {
+			p.cursor--
+		}
+		m.Picker = p
+		return m, nil
+
+	case "down", "j":
+		if p.cursor < len(p.filtered)-1 {
+			p.cursor++
+		}
+		m.Picker = p
+		return m, nil
+
+	case "enter":
+		if len(p.filtered) == 0 {
+			return m, nil
+		}
+		selected := p.filtered[p.cursor]
+		if selected.isDir {
+			m.Picker = p.descend(selected.name)
+			return m, nil
+		}
+		// file selected — send it
+		path := p.selectedPath()
+		_ = path // TODO: wire to send service
+		server := m.ActiveServer
+		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+
+	case "backspace":
+		newP, consumed := p.backspace()
+		m.Picker = newP
+		_ = consumed
+		return m, nil
+
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+
+	case "esc":
+		server := m.ActiveServer
+		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+
+	default:
+		// printable single rune → append to query
+		if msg.Text != "" {
+			m.Picker = p.typeRune([]rune(msg.Text)[0])
+			return m, nil
+		}
+	}
+
 	return m, nil
 }
 

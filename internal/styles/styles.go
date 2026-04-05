@@ -146,6 +146,31 @@ var (
 	FilenameLabelStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("243")).
 				MarginBottom(1)
+
+	// Local directory label (above file list and in picker breadcrumb)
+	LocalDirStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("243")).
+				Italic(true).
+				MarginBottom(1)
+
+	// File picker
+	PickerQueryStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("75")).
+				MarginBottom(1)
+
+	pickerItemBase = lipgloss.NewStyle().
+				PaddingLeft(4).
+				Width(44)
+
+	pickerItemActive = lipgloss.NewStyle().
+				PaddingLeft(2).
+				Foreground(lipgloss.Color("75")).
+				Bold(true).
+				Width(44).
+				SetString("▸ ")
+
+	pickerDirColor  = lipgloss.Color("75")
+	pickerFileColor = lipgloss.Color("252")
 )
 
 func MenuItemStyle(active, disabled bool) lipgloss.Style {
@@ -185,6 +210,21 @@ func FileItemStyle(active bool) lipgloss.Style {
 		return fileItemActive
 	}
 	return fileItemInactive
+}
+
+// PickerItemStyle returns the style for a file picker entry.
+// Directories are coloured differently from files.
+func PickerItemStyle(active, isDir bool) lipgloss.Style {
+	if active {
+		if isDir {
+			return pickerItemActive.Foreground(pickerDirColor)
+		}
+		return pickerItemActive.Foreground(lipgloss.Color("255"))
+	}
+	if isDir {
+		return pickerItemBase.Foreground(pickerDirColor)
+	}
+	return pickerItemBase.Foreground(pickerFileColor)
 }
 
 // ServerRowStyle renders a single-line server list entry showing only the server name.

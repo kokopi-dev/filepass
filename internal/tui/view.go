@@ -32,6 +32,8 @@ func (m TUIInterface) subtitle() string {
 		return "Server"
 	case pageFileAction:
 		return m.ActiveFile
+	case pageSend:
+		return "Send File"
 	default:
 		return "Secure file transfer"
 	}
@@ -61,6 +63,8 @@ func (m TUIInterface) View() tea.View {
 		body = m.viewServerActions()
 	case pageFileAction:
 		body = m.viewFileAction()
+	case pageSend:
+		body = m.viewSend()
 	default:
 		body = m.viewMenu()
 	}
@@ -102,6 +106,14 @@ func (m TUIInterface) View() tea.View {
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageSend:
+		footerStr = footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "open/send") +
+			footerSep() +
+			footerHint("backspace", "up a level") +
 			footerSep() +
 			footerHint("esc", "back")
 	default:
@@ -156,7 +168,7 @@ func (m TUIInterface) viewMenu() string {
 }
 
 func (m TUIInterface) viewServerActions() string {
-	// action menu — single column, unfocused when file pane is active
+	// action menu — single column, cursor only shown when pane is focused
 	var actionRows []string
 	for i, item := range m.MenuItems {
 		active := !m.FileFocused && i == m.Selected
@@ -164,7 +176,10 @@ func (m TUIInterface) viewServerActions() string {
 	}
 	actions := lipgloss.JoinVertical(lipgloss.Left, actionRows...)
 
-	// file list section below, separated by a top border
+	// static local dir label — always visible above the file list
+	localDirLabel := styles.LocalDirStyle.Render("  ↓ " + m.LocalDir)
+
+	// file list rows
 	var fileRows []string
 	switch {
 	case m.StorageLoading:
@@ -180,13 +195,14 @@ func (m TUIInterface) viewServerActions() string {
 		}
 	}
 	fileList := lipgloss.JoinVertical(lipgloss.Left, fileRows...)
-	fileSection := styles.StorageFileSectionStyle.Render(fileList)
+	fileSection := styles.StorageFileSectionStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left, localDirLabel, fileList),
+	)
 
 	return lipgloss.JoinVertical(lipgloss.Left, actions, fileSection)
 }
 
 func (m TUIInterface) viewFileAction() string {
-	// filename shown as a dim label above the menu
 	filenameLabel := styles.FilenameLabelStyle.Render(m.ActiveFile)
 
 	var menuRows []string
@@ -196,6 +212,30 @@ func (m TUIInterface) viewFileAction() string {
 	menu := lipgloss.JoinVertical(lipgloss.Left, menuRows...)
 
 	return lipgloss.JoinVertical(lipgloss.Left, filenameLabel, menu)
+}
+
+func (m TUIInterface) viewSend() string {
+	p := m.Picker
+
+	// breadcrumb showing current directory
+	crumb := styles.LocalDirStyle.Render("  " + p.dir)
+
+	// search input
+	queryLine := styles.PickerQueryStyle.Render("  / " + p.query + "█")
+
+	// file/dir entries
+	var rows []string
+	if len(p.filtered) == 0 {
+		rows = append(rows, styles.StorageEmptyStyle.Render("  no matches"))
+	} else {
+		for i, e := range p.filtered {
+			active := i == p.cursor
+			rows = append(rows, styles.PickerItemStyle(active, e.isDir).Render(e.name))
+		}
+	}
+	list := lipgloss.JoinVertical(lipgloss.Left, rows...)
+
+	return lipgloss.JoinVertical(lipgloss.Left, crumb, queryLine, list)
 }
 
 func (m TUIInterface) viewSelectServer() string {

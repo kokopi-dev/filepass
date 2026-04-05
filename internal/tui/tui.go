@@ -14,6 +14,7 @@ const (
 	pageSelectServer
 	pageServerActions
 	pageFileAction
+	pageSend
 )
 
 type TUIInterface struct {
@@ -33,6 +34,7 @@ type TUIInterface struct {
 	WindowHeight int
 	// server actions page
 	ActiveServer   string
+	LocalDir       string // user's cwd, destination for received files
 	StorageFiles   []string
 	StorageLoading bool
 	StorageErr     error
@@ -40,12 +42,15 @@ type TUIInterface struct {
 	FileFocused    bool // true = ↑↓ drives file list, false = action menu
 	// file action page
 	ActiveFile string
+	// send / file picker page
+	Picker picker
 }
 
-func NewTUIInterface(store *services.ServicesStore) TUIInterface {
+func NewTUIInterface(store *services.ServicesStore, localDir string) TUIInterface {
 	return TUIInterface{
 		Services:  store,
 		Page:      pageHome,
 		MenuItems: pages.HomeMenuItems(),
+		LocalDir:  localDir,
 	}
 }

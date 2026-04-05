@@ -15,8 +15,13 @@ func main() {
 	if _, err := exec.LookPath("rsync"); err != nil {
 		fmt.Fprintln(os.Stderr, "error: rsync is required but was not found in PATH")
 		fmt.Fprintln(os.Stderr, "install it with your package manager, e.g.:")
-		fmt.Fprintln(os.Stderr, "  brew install rsync")
-		fmt.Fprintln(os.Stderr, "  apt install rsync")
+		fmt.Fprintln(os.Stderr, "  sudo pacman -S rsync")
+		os.Exit(1)
+	}
+
+	localDir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to get working directory:", err)
 		os.Exit(1)
 	}
 
@@ -26,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m := tui.NewTUIInterface(store)
+	m := tui.NewTUIInterface(store, localDir)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

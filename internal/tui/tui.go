@@ -41,7 +41,10 @@ type TUIInterface struct {
 	FileSelected   int  // cursor within StorageFiles
 	FileFocused    bool // true = ↑↓ drives file list, false = action menu
 	// file action page
-	ActiveFile string
+	ActiveFile    string
+	FileOpLoading bool
+	FileOpErr     error
+	FileOpSuccess string
 	// send / file picker page
 	Picker picker
 }

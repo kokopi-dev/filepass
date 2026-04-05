@@ -2,10 +2,17 @@ package services
 
 import (
 	"os/exec"
+	"strings"
 )
 
 const defaultPort = "22"
 const defaultStoragePath = "~/.filepass_storage"
+
+// shellQuote wraps s in single quotes, escaping any single quotes within it.
+// This is safe for use in remote shell commands passed over SSH.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
 
 func serverPort(s Server) string {
 	if s.Port == "" {
@@ -42,9 +49,10 @@ func RsyncCmd(s Server, src, dst string) *exec.Cmd {
 	)
 }
 
-// RemotePath returns the full remote path for a filename inside storage.
+// RemotePath returns the full remote rsync path for a filename inside storage.
+// Only the filename is shell-quoted so ~ expands correctly on the remote shell.
 func RemotePath(s Server, filename string) string {
-	return s.User + "@" + s.Host + ":" + defaultStoragePath + "/" + filename
+	return s.User + "@" + s.Host + ":" + defaultStoragePath + "/" + shellQuote(filename)
 }
 
 // RemoteStorageRoot returns the remote storage root for rsync operations.

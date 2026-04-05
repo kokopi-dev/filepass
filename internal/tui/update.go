@@ -28,6 +28,38 @@ type storageFilesMsg struct {
 	err   error
 }
 
+type fileOpMsg struct {
+	op      string // "get" or "delete"
+	err     error
+	success string
+}
+
+func getFileCmd(store *services.ServicesStore, serverName, filename, destDir string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return fileOpMsg{op: "get", err: err}
+		}
+		if err := storage.Get(filename, destDir); err != nil {
+			return fileOpMsg{op: "get", err: err}
+		}
+		return fileOpMsg{op: "get", success: "✓  Downloaded \"" + filename + "\""}
+	}
+}
+
+func deleteFileCmd(store *services.ServicesStore, serverName, filename string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return fileOpMsg{op: "delete", err: err}
+		}
+		if err := storage.Delete(filename); err != nil {
+			return fileOpMsg{op: "delete", err: err}
+		}
+		return fileOpMsg{op: "delete", success: "✓  Deleted \"" + filename + "\""}
+	}
+}
+
 func checkStorageCmd(store *services.ServicesStore, serverName string) tea.Cmd {
 	return func() tea.Msg {
 		storage, err := store.NewStorageService(serverName)
@@ -115,12 +147,28 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ActiveFile = msg.Filename
 		m.MenuItems = pages.FileActionItems()
 		m.Selected = 0
+		m.FileOpLoading = false
+		m.FileOpErr = nil
+		m.FileOpSuccess = ""
 		return m, nil
 
 	case pages.SendPageMsg:
 		m.Page = pageSend
 		m.Picker = newPicker(m.LocalDir)
 		return m, nil
+
+	case fileOpMsg:
+		m.FileOpLoading = false
+		if msg.err != nil {
+			m.FileOpErr = msg.err
+			return m, nil
+		}
+		// on success: return to server actions and refresh file list
+		server := m.ActiveServer
+		return m, tea.Batch(
+			func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} },
+			clearFlashAfter(0), // immediate clear of any stale flash
+		)
 
 	case storageFilesMsg:
 		m.StorageLoading = false
@@ -280,6 +328,15 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 }
 
 func (m TUIInterface) updateFileAction(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// block input while an operation is running
+	if m.FileOpLoading {
+		if msg.String() == "ctrl+c" {
+			m.Quitting = true
+			return m, tea.Quit
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "up", "k":
 		if m.Selected > 0 {
@@ -294,13 +351,15 @@ func (m TUIInterface) updateFileAction(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		file := m.ActiveFile
 		switch m.MenuItems[m.Selected].Key {
 		case "get":
-			_ = server
-			_ = file
-			// TODO: implement get
+			m.FileOpLoading = true
+			m.FileOpErr = nil
+			m.FileOpSuccess = ""
+			return m, getFileCmd(m.Services, server, file, m.LocalDir)
 		case "delete":
-			_ = server
-			_ = file
-			// TODO: implement delete
+			m.FileOpLoading = true
+			m.FileOpErr = nil
+			m.FileOpSuccess = ""
+			return m, deleteFileCmd(m.Services, server, file)
 		}
 	case "ctrl+c":
 		m.Quitting = true

@@ -207,11 +207,25 @@ func (m TUIInterface) viewFileAction() string {
 
 	var menuRows []string
 	for i, item := range m.MenuItems {
-		menuRows = append(menuRows, styles.MenuItemStyle(i == m.Selected, false).Render(item.Label))
+		disabled := m.FileOpLoading
+		active := !disabled && i == m.Selected
+		menuRows = append(menuRows, styles.MenuItemStyle(active, disabled).Render(item.Label))
 	}
 	menu := lipgloss.JoinVertical(lipgloss.Left, menuRows...)
 
-	return lipgloss.JoinVertical(lipgloss.Left, filenameLabel, menu)
+	var statusLine string
+	switch {
+	case m.FileOpLoading:
+		statusLine = styles.StatusWarnStyle.Render("  working…")
+	case m.FileOpErr != nil:
+		statusLine = styles.StatusErrStyle.Render("✗  " + m.FileOpErr.Error())
+	}
+
+	parts := []string{filenameLabel, menu}
+	if statusLine != "" {
+		parts = append(parts, statusLine)
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
 
 func (m TUIInterface) viewSend() string {

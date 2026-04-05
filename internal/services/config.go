@@ -69,6 +69,21 @@ func (c *ConfigService) AddServer(name string, s Server) error {
 	return c.flush()
 }
 
+func (c *ConfigService) EditServer(oldName, newName string, s Server) error {
+	if !c.HasServer(oldName) {
+		return fmt.Errorf("server %q not found", oldName)
+	}
+	if newName != oldName && c.HasServer(newName) {
+		return fmt.Errorf("server %q already exists", newName)
+	}
+	if newName != oldName {
+		delete(c.servers, oldName)
+	}
+	c.servers[newName] = s
+	return c.flush()
+}
+
+
 func (c *ConfigService) RemoveServer(name string) error {
 	if !c.HasServer(name) {
 		return fmt.Errorf("server %q not found", name)

@@ -27,6 +27,12 @@ type serverRemovedMsg struct {
 	servers map[string]services.Server
 }
 
+type serverEditedMsg struct {
+	oldName string
+	newName string
+	servers map[string]services.Server
+}
+
 type clearFlashMsg struct{}
 
 type storageFilesMsg struct {
@@ -182,6 +188,30 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FileOpSuccess = ""
 		return m, nil
 
+	case pages.SelectEditServerPageMsg:
+		m.Page = pageSelectEditServer
+		m.Selected = 0
+		return m, nil
+
+	case pages.EditServerPageMsg:
+		name := msg.ServerName
+		srv := m.Servers[name]
+		m.Page = pageEditServer
+		m.EditingServer = name
+		m.Form = newEditServerForm(name, srv)
+		m.FormErr = ""
+		return m, nil
+
+	case serverEditedMsg:
+		m.Servers = msg.servers
+		m.ServerNames = sortedServerNames(msg.servers)
+		m.NoServers = len(msg.servers) == 0
+		m.Page = pageConfig
+		m.MenuItems = pages.ConfigMenuItems()
+		m.Selected = 0
+		m.FlashMsg = "✓  \"" + msg.newName + "\" updated."
+		return m, clearFlashAfter(2 * time.Second)
+
 	case pages.RemoveServerPageMsg:
 		m.Page = pageRemoveServer
 		m.Selected = 0
@@ -289,6 +319,12 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Page == pageRemoveServer {
 			return m.updateRemoveServer(msg)
 		}
+		if m.Page == pageSelectEditServer {
+			return m.updateSelectEditServer(msg)
+		}
+		if m.Page == pageEditServer {
+			return m.updateAddServer(msg)
+		}
 
 		switch msg.String() {
 		case "up", "k":
@@ -311,6 +347,8 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return pages.AddServerPageMsg{} }
 			case "server":
 				return m, func() tea.Msg { return pages.SelectServerPageMsg{} }
+			case "edit":
+				return m, func() tea.Msg { return pages.SelectEditServerPageMsg{} }
 			case "remove":
 				return m, func() tea.Msg { return pages.RemoveServerPageMsg{} }
 			// TODO: "edit"
@@ -534,6 +572,31 @@ func (m TUIInterface) updateRemoveServer(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	return m, nil
 }
 
+func (m TUIInterface) updateSelectEditServer(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	last := len(m.ServerNames) - 1
+	switch msg.String() {
+	case "up", "k":
+		if m.Selected > 0 {
+			m.Selected--
+		}
+	case "down", "j":
+		if m.Selected < last {
+			m.Selected++
+		}
+	case "enter":
+		if m.Selected >= 0 && m.Selected < len(m.ServerNames) {
+			name := m.ServerNames[m.Selected]
+			return m, func() tea.Msg { return pages.EditServerPageMsg{ServerName: name} }
+		}
+	case "ctrl+c":
+		m.Quitting = true
+		return m, tea.Quit
+	case "esc":
+		return m, func() tea.Msg { return pages.ConfigPageMsg{} }
+	}
+	return m, nil
+}
+
 func (m TUIInterface) updateCleanAll(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.CleanOpLoading {
 		if msg.String() == "ctrl+c" {
@@ -655,6 +718,9 @@ func (m TUIInterface) updateAddServerPaste(text string) (tea.Model, tea.Cmd) {
 }
 
 func (m TUIInterface) submitAddServer() (tea.Model, tea.Cmd) {
+	if m.Page == pageEditServer {
+		return m.submitEditServer()
+	}
 	f := m.Form
 	name := strings.TrimSpace(f.inputs[fieldName].Value())
 
@@ -681,5 +747,36 @@ func (m TUIInterface) submitAddServer() (tea.Model, tea.Cmd) {
 
 	return m, func() tea.Msg {
 		return serverAddedMsg{name: name, servers: m.Services.Config.Servers()}
+	}
+}
+
+func (m TUIInterface) submitEditServer() (tea.Model, tea.Cmd) {
+	f := m.Form
+	newName := strings.TrimSpace(f.inputs[fieldName].Value())
+
+	if !f.canSave() {
+		return m, nil
+	}
+
+	if newName != m.EditingServer && m.Services.Config.HasServer(newName) {
+		m.FormErr = "✗  \"" + newName + "\" already exists."
+		return m, nil
+	}
+
+	s := services.Server{
+		Host:       strings.TrimSpace(f.inputs[fieldHost].Value()),
+		User:       strings.TrimSpace(f.inputs[fieldUser].Value()),
+		PrivateKey: strings.TrimSpace(f.inputs[fieldPrivateKey].Value()),
+		Port:       strings.TrimSpace(f.inputs[fieldPort].Value()),
+	}
+
+	if err := m.Services.Config.EditServer(m.EditingServer, newName, s); err != nil {
+		m.FormErr = "✗  " + err.Error()
+		return m, nil
+	}
+
+	oldName := m.EditingServer
+	return m, func() tea.Msg {
+		return serverEditedMsg{oldName: oldName, newName: newName, servers: m.Services.Config.Servers()}
 	}
 }

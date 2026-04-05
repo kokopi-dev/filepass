@@ -25,6 +25,10 @@ func (m TUIInterface) subtitle() string {
 		return "Configuration"
 	case pageAddServer:
 		return "Add Server"
+	case pageSelectEditServer:
+		return "Edit Server"
+	case pageEditServer:
+		return "Edit — " + m.EditingServer
 	case pageSelectServer:
 		return "Select Server"
 	case pageServerActions:
@@ -61,8 +65,10 @@ func (m TUIInterface) View() tea.View {
 
 	var body string
 	switch m.Page {
-	case pageAddServer:
+	case pageAddServer, pageEditServer:
 		body = m.viewAddServer()
+	case pageSelectEditServer:
+		body = m.viewSelectEditServer()
 	case pageSelectServer:
 		body = m.viewSelectServer()
 	case pageServerActions:
@@ -90,7 +96,7 @@ func (m TUIInterface) View() tea.View {
 
 	var footerStr string
 	switch m.Page {
-	case pageAddServer:
+	case pageAddServer, pageEditServer:
 		footerStr = footerHint("tab/↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
@@ -116,6 +122,12 @@ func (m TUIInterface) View() tea.View {
 		footerStr = footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "confirm") +
+			footerSep() +
+			footerHint("esc", "back")
+	case pageSelectEditServer:
+		footerStr = footerHint("↑↓", "navigate") +
+			footerSep() +
+			footerHint("enter", "edit") +
 			footerSep() +
 			footerHint("esc", "back")
 	case pageRemoveServer:
@@ -270,6 +282,17 @@ func (m TUIInterface) viewSend() string {
 	list := lipgloss.JoinVertical(lipgloss.Left, rows...)
 
 	return lipgloss.JoinVertical(lipgloss.Left, crumb, queryLine, list)
+}
+
+func (m TUIInterface) viewSelectEditServer() string {
+	if len(m.ServerNames) == 0 {
+		return styles.StatusWarnStyle.Render("⚠  No servers configured.")
+	}
+	var rows []string
+	for i, name := range m.ServerNames {
+		rows = append(rows, styles.ServerRowStyle(i == m.Selected, name))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (m TUIInterface) viewRemoveServer() string {

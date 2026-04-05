@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 
+	"filepass/internal/services"
+
 	"charm.land/bubbles/v2/textinput"
 )
 
@@ -74,5 +76,34 @@ func (f addServerForm) focusPrev() addServerForm {
 		prev = 0
 	}
 	f.focusField(prev)
+	return f
+}
+
+// newEditServerForm builds a pre-filled form for editing an existing server.
+// The name field is pre-populated with the server key; all other fields with
+// the existing server values.
+func newEditServerForm(name string, s services.Server) addServerForm {
+	mkInput := func(placeholder string, limit int, value string) textinput.Model {
+		ti := textinput.New()
+		ti.Prompt = ""
+		ti.CharLimit = limit
+		ti.SetWidth(40)
+		ti.Placeholder = placeholder
+		ti.SetValue(value)
+		return ti
+	}
+
+	port := s.Port
+	if port == "22" {
+		port = ""
+	}
+
+	f := addServerForm{}
+	f.inputs[fieldName] = mkInput("production-web", 64, name)
+	f.inputs[fieldHost] = mkInput("192.168.1.1 or example.com", 253, s.Host)
+	f.inputs[fieldUser] = mkInput("deploy", 64, s.User)
+	f.inputs[fieldPrivateKey] = mkInput("~/.ssh/id_rsa", 512, s.PrivateKey)
+	f.inputs[fieldPort] = mkInput("22  (optional)", 5, port)
+	f.inputs[fieldName].Focus()
 	return f
 }

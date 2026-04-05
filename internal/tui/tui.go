@@ -19,6 +19,8 @@ const (
 	pageSend
 	pageCleanAll
 	pageRemoveServer
+	pageSelectEditServer
+	pageEditServer
 )
 
 type TUIInterface struct {
@@ -49,6 +51,8 @@ type TUIInterface struct {
 	FileOpLoading bool
 	FileOpErr     error
 	FileOpSuccess string
+	// edit server page
+	EditingServer string // original name of server being edited
 	// clean all confirmation page
 	CleanInput    textinput.Model
 	CleanOpLoading bool

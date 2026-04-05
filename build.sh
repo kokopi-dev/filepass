@@ -1,47 +1,73 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+BINARY_NAME="filepass"
+BIN_DIR="$HOME/.local/bin"
+BASHRC="$HOME/.bashrc"
+DIST_DIR="$(pwd)/dist"
+BUILD_OUTPUT="$DIST_DIR/$BINARY_NAME"
+INSTALL_TARGET="$BIN_DIR/$BINARY_NAME"
 
-LOCAL_BIN="$HOME/.local/bin"
-EXPORT_LINE='export PATH="$HOME/.local/bin:$PATH"'
+# ── Colours ────────────────────────────────────────────────────────────────────
+BOLD='\033[1m'
+DIM='\033[2m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
 
-# Files to check (macOS + Linux)
-FILES=(
-  "$HOME/.bashrc"
-  "$HOME/.bash_profile"
-  "$HOME/.zshrc"
-)
+step()    { echo -e "\n${BOLD}${CYAN}▶  $1${RESET}"; }
+ok()      { echo -e "   ${GREEN}✔${RESET}  $1"; }
+skip()    { echo -e "   ${DIM}–  $1${RESET}"; }
+warn()    { echo -e "   ${YELLOW}⚠  $1${RESET}"; }
+divider() { echo -e "${DIM}   ──────────────────────────────────────${RESET}"; }
 
-echo "Ensuring ~/.local/bin exists..."
-mkdir -p "$LOCAL_BIN"
+# ── Header ─────────────────────────────────────────────────────────────────────
+echo -e "\n${BOLD}  scripts-organizer — build${RESET}"
+divider
 
-add_to_file() {
-  local file="$1"
+# ── 1. Build Go binary ─────────────────────────────────────────────────────────
+step "Building Go binary"
 
-  # Create file if it doesn't exist
-  [ -f "$file" ] || touch "$file"
+mkdir -p "$DIST_DIR"
+go build -o "$BUILD_OUTPUT"
 
-  if grep -qxF "$EXPORT_LINE" "$file"; then
-    echo "✓ PATH already set in $(basename "$file")"
-  else
-    echo "→ Adding PATH to $(basename "$file")"
-    {
-      echo ""
-      echo "# Add local bin to PATH"
-      echo "$EXPORT_LINE"
-    } >> "$file"
-  fi
-}
+ok "Build complete → dist/$BINARY_NAME"
 
-echo "Updating shell config files..."
+# ── 2. Ensure ~/.local/bin exists ──────────────────────────────────────────────
+step "Checking $BIN_DIR"
+mkdir -p "$BIN_DIR"
+ok "$BIN_DIR exists"
 
-for file in "${FILES[@]}"; do
-  add_to_file "$file"
-done
+# ── 3. Add ~/.local/bin to PATH in ~/.bashrc if not already present ────────────
+step "Checking PATH in $BASHRC"
+PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
+PATH_MARKER="# scripts-organizer: bin_dir"
 
-echo ""
-echo "Done!"
-echo "Restart your shell or run:"
-echo "  source ~/.zshrc   # for zsh"
-echo "  source ~/.bashrc  # for bash"
+touch "$BASHRC"
+
+if grep -qE '(^|:)[^#]*\.local/bin([^a-zA-Z0-9_]|$)' "$BASHRC"; then
+    skip "$BIN_DIR already declared in $BASHRC"
+else
+    echo "" >> "$BASHRC"
+    echo "$PATH_MARKER" >> "$BASHRC"
+    echo "$PATH_EXPORT" >> "$BASHRC"
+    ok "Added $BIN_DIR to PATH in $BASHRC"
+    warn "Restart your shell or run: source $BASHRC"
+fi
+
+# ── 4. Move binary into ~/.local/bin ───────────────────────────────────────────
+step "Installing binary"
+
+if [[ -f "$INSTALL_TARGET" ]]; then
+    warn "Overwriting existing binary at $INSTALL_TARGET"
+fi
+
+mv "$BUILD_OUTPUT" "$INSTALL_TARGET"
+chmod +x "$INSTALL_TARGET"
+
+ok "Installed → $INSTALL_TARGET"
+
+# ── Done ───────────────────────────────────────────────────────────────────────
+divider
+echo -e "\n${BOLD}${GREEN}  ✔  Done.${RESET}  Run: ${BOLD}$BINARY_NAME${RESET}\n"

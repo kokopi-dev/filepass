@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -83,6 +84,25 @@ func cleanAllCmd(store *services.ServicesStore, serverName string) tea.Cmd {
 			return cleanAllMsg{err: err}
 		}
 		return cleanAllMsg{err: storage.CleanAll()}
+	}
+}
+
+type sendFileMsg struct {
+	filename string
+	err      error
+}
+
+func sendFileCmd(store *services.ServicesStore, serverName, localPath string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return sendFileMsg{err: err}
+		}
+		filename := filepath.Base(localPath)
+		if err := storage.Send(localPath); err != nil {
+			return sendFileMsg{err: err}
+		}
+		return sendFileMsg{filename: filename}
 	}
 }
 
@@ -259,6 +279,23 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} },
 			clearFlashAfter(0), // immediate clear of any stale flash
+		)
+
+	case sendFileMsg:
+		if msg.err != nil {
+			// return to server actions with error flash
+			server := m.ActiveServer
+			m.FlashMsg = "✗  send failed: " + msg.err.Error()
+			return m, tea.Batch(
+				func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} },
+				clearFlashAfter(4*time.Second),
+			)
+		}
+		server := m.ActiveServer
+		m.FlashMsg = "✓  \"" + msg.filename + "\" sent."
+		return m, tea.Batch(
+			func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} },
+			clearFlashAfter(3*time.Second),
 		)
 
 	case storageFilesMsg:
@@ -482,6 +519,11 @@ func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	p := m.Picker
 
 	switch msg.String() {
+	case "tab":
+		p.queryFocused = !p.queryFocused
+		m.Picker = p
+		return m, nil
+
 	case "up", "k":
 		if p.cursor > 0 {
 			p.cursor--
@@ -506,16 +548,16 @@ func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		// file selected — send it
-		path := p.selectedPath()
-		_ = path // TODO: wire to send service
+		localPath := p.selectedPath()
 		server := m.ActiveServer
-		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
+		return m, sendFileCmd(m.Services, server, localPath)
 
 	case "backspace":
-		newP, consumed := p.backspace()
-		m.Picker = newP
-		_ = consumed
-		return m, nil
+		if p.queryFocused {
+			newP, _ := p.backspace()
+			m.Picker = newP
+			return m, nil
+		}
 
 	case "ctrl+c":
 		m.Quitting = true
@@ -526,8 +568,8 @@ func (m TUIInterface) updateSend(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return pages.ServerActionsPageMsg{ServerName: server} }
 
 	default:
-		// printable single rune → append to query
-		if msg.Text != "" {
+		// printable rune → only append to query when query pane is focused
+		if msg.Text != "" && p.queryFocused {
 			m.Picker = p.typeRune([]rune(msg.Text)[0])
 			return m, nil
 		}

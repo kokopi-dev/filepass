@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"filepass/internal/styles"
 
@@ -141,11 +142,11 @@ func (m TUIInterface) View() tea.View {
 			footerSep() +
 			footerHint("esc", "back")
 	case pageSend:
-		footerStr = footerHint("↑↓", "navigate") +
+		footerStr = footerHint("tab", "switch pane") +
+			footerSep() +
+			footerHint("↑↓", "navigate") +
 			footerSep() +
 			footerHint("enter", "open/send") +
-			footerSep() +
-			footerHint("backspace", "up a level") +
 			footerSep() +
 			footerHint("esc", "back")
 	default:
@@ -191,6 +192,12 @@ func (m TUIInterface) viewMenu() string {
 		statusLine = styles.StatusWarnStyle.Render("⚠  No servers configured. Select Config to add one.")
 	case m.FlashMsg != "" && m.Page == pageConfig:
 		statusLine = styles.StatusOKStyle.Render(m.FlashMsg)
+	case m.FlashMsg != "" && m.Page == pageServerActions:
+		if strings.HasPrefix(m.FlashMsg, "✗") {
+			statusLine = styles.StatusErrStyle.Render(m.FlashMsg)
+		} else {
+			statusLine = styles.StatusOKStyle.Render(m.FlashMsg)
+		}
 	}
 
 	if statusLine != "" {
@@ -266,8 +273,19 @@ func (m TUIInterface) viewSend() string {
 	// breadcrumb showing current directory
 	crumb := styles.LocalDirStyle.Render("  " + p.dir)
 
-	// search input
-	queryLine := styles.PickerQueryStyle.Render("  / " + p.query + "█")
+	// search input — shows cursor block and accent colour when focused, dim when not
+	var queryLine string
+	if p.queryFocused {
+		queryLine = styles.PickerQueryStyle.Render("  / " + p.query + "█")
+	} else {
+		var queryHint string
+		if p.query != "" {
+			queryHint = "  / " + p.query
+		} else {
+			queryHint = "  / (tab to filter)"
+		}
+		queryLine = styles.PickerQueryBlurredStyle.Render(queryHint)
+	}
 
 	// file/dir entries
 	var rows []string

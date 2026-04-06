@@ -14,15 +14,16 @@ type entry struct {
 
 // picker is the state for the send file picker page.
 type picker struct {
-	dir      string    // current directory being browsed
-	entries  []entry   // unfiltered entries in dir
-	filtered []entry   // entries matching query
-	query    string    // current filter string
-	cursor   int       // index within filtered
+	dir          string  // current directory being browsed
+	entries      []entry // unfiltered entries in dir
+	filtered     []entry // entries matching query
+	query        string  // current filter string
+	cursor       int     // index within filtered
+	queryFocused bool    // true = typing goes to query; false = list navigation only
 }
 
 func newPicker(startDir string) picker {
-	p := picker{dir: startDir}
+	p := picker{dir: startDir, queryFocused: false}
 	p.entries = readDir(startDir)
 	p.filtered = p.entries
 	return p

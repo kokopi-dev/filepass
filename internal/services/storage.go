@@ -68,11 +68,17 @@ func (s *StorageService) Delete(filename string) error {
 	return nil
 }
 
-// Send transfers one or more local files to the remote storage.
-// Multiple files are archived into a temp tarball first.
-func (s *StorageService) Send(localPaths []string) error {
-	// TODO: implement
-	return fmt.Errorf("send: not yet implemented")
+// Send transfers a single local file to the remote storage directory.
+func (s *StorageService) Send(localPath string) error {
+	dst := RemoteStorageRoot(s.server)
+	cmd := RsyncCmd(s.server, localPath, dst)
+	debugLog("Send | args: %v", cmd.Args)
+	out, err := cmd.CombinedOutput()
+	debugLog("Send | exit_err: %v | output: %q", err, strings.TrimSpace(string(out)))
+	if err != nil {
+		return fmt.Errorf("send failed: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 // CleanAll removes all files from remote storage.

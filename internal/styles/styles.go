@@ -164,6 +164,10 @@ var (
 				Foreground(lipgloss.Color("75")).
 				MarginBottom(1)
 
+	PickerQueryBlurredStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240")).
+				MarginBottom(1)
+
 	pickerItemBase = lipgloss.NewStyle().
 				PaddingLeft(4).
 				Width(44)

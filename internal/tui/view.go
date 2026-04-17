@@ -220,6 +220,8 @@ func (m TUIInterface) viewServerActions() string {
 
 	// file list rows
 	var fileRows []string
+	showScrollUp := false
+	showScrollDown := false
 	switch {
 	case m.StorageLoading:
 		fileRows = append(fileRows, styles.StatusWarnStyle.Render("  loading…"))
@@ -228,12 +230,22 @@ func (m TUIInterface) viewServerActions() string {
 	case len(m.StorageFiles) == 0:
 		fileRows = append(fileRows, styles.StorageEmptyStyle.Render("  no files in storage"))
 	default:
-		for i, f := range m.StorageFiles {
+		start, end := visibleRange(len(m.StorageFiles), m.FileSelected, m.FileScrollOff, m.FileViewHeight)
+		showScrollUp = start > 0
+		showScrollDown = end < len(m.StorageFiles)
+		for i := start; i < end; i++ {
+			f := m.StorageFiles[i]
 			active := m.FileFocused && i == m.FileSelected
 			fileRows = append(fileRows, styles.FileItemStyle(active).Render(f))
 		}
 	}
 	fileList := lipgloss.JoinVertical(lipgloss.Left, fileRows...)
+	if showScrollUp {
+		fileList = styles.ScrollIndicatorStyle.Render("  ↑") + "\n" + fileList
+	}
+	if showScrollDown {
+		fileList = fileList + "\n" + styles.ScrollIndicatorStyle.Render("  ↓")
+	}
 	fileSection := styles.StorageFileSectionStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Left, localDirLabel, fileList),
 	)

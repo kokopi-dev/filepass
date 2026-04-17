@@ -46,6 +46,8 @@ type TUIInterface struct {
 	StorageErr     error
 	FileSelected   int  // cursor within StorageFiles
 	FileFocused    bool // true = ↑↓ drives file list, false = action menu
+	FileScrollOff  int  // first visible row in StorageFiles list
+	FileViewHeight int  // available visible rows for StorageFiles list
 	// file action page
 	ActiveFile    string
 	FileOpLoading bool
@@ -54,9 +56,9 @@ type TUIInterface struct {
 	// edit server page
 	EditingServer string // original name of server being edited
 	// clean all confirmation page
-	CleanInput    textinput.Model
+	CleanInput     textinput.Model
 	CleanOpLoading bool
-	CleanOpErr    error
+	CleanOpErr     error
 	// send / file picker page
 	Picker picker
 }
@@ -68,4 +70,33 @@ func NewTUIInterface(store *services.ServicesStore, localDir string) TUIInterfac
 		MenuItems: pages.HomeMenuItems(),
 		LocalDir:  localDir,
 	}
+}
+
+// fileListHeight calculates how many rows can fit in the server storage file list.
+func (m TUIInterface) fileListHeight() int {
+	h := m.WindowHeight
+	if h == 0 {
+		return 0 // unconstrained until first WindowSizeMsg
+	}
+
+	// Card chrome overhead (border top+bottom, inner padding top+bottom)
+	const cardOverhead = 6
+	// Header (title + subtitle + margins)
+	const headerLines = 4
+	// Footer (border + content)
+	const footerLines = 2
+	// Server actions menu rows (Send / Clean All)
+	actionLines := len(m.MenuItems)
+	if actionLines < 1 {
+		actionLines = 2
+	}
+	// File section chrome: section margin+border+padding + local-dir label+margin
+	const fileSectionOverhead = 5
+
+	used := cardOverhead + headerLines + footerLines + actionLines + fileSectionOverhead
+	available := h - used
+	if available < 1 {
+		available = 1
+	}
+	return available
 }

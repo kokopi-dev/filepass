@@ -126,12 +126,12 @@ var (
 
 	// Storage file list
 	StorageFileSectionStyle = lipgloss.NewStyle().
-					BorderTop(true).
-					BorderStyle(lipgloss.NormalBorder()).
-					BorderForeground(lipgloss.Color("237")).
-					MarginTop(1).
-					PaddingTop(1).
-					Width(44)
+				BorderTop(true).
+				BorderStyle(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color("237")).
+				MarginTop(1).
+				PaddingTop(1).
+				Width(44)
 
 	StorageEmptyStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("243")).
@@ -143,11 +143,11 @@ var (
 				Width(44)
 
 	fileItemActive = lipgloss.NewStyle().
-				PaddingLeft(2).
-				Foreground(lipgloss.Color("75")).
-				Bold(true).
-				Width(44).
-				SetString("▸ ")
+			PaddingLeft(2).
+			Foreground(lipgloss.Color("75")).
+			Bold(true).
+			Width(44).
+			SetString("▸ ")
 
 	FilenameLabelStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("243")).
@@ -155,9 +155,9 @@ var (
 
 	// Local directory label (above file list and in picker breadcrumb)
 	LocalDirStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("243")).
-				Italic(true).
-				MarginBottom(1)
+			Foreground(lipgloss.Color("243")).
+			Italic(true).
+			MarginBottom(1)
 
 	// File picker
 	PickerQueryStyle = lipgloss.NewStyle().
@@ -169,8 +169,8 @@ var (
 				MarginBottom(1)
 
 	pickerItemBase = lipgloss.NewStyle().
-				PaddingLeft(4).
-				Width(44)
+			PaddingLeft(4).
+			Width(44)
 
 	pickerItemActive = lipgloss.NewStyle().
 				PaddingLeft(2).
@@ -181,6 +181,9 @@ var (
 
 	pickerDirColor  = lipgloss.Color("75")
 	pickerFileColor = lipgloss.Color("252")
+
+	ScrollIndicatorStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240"))
 )
 
 func MenuItemStyle(active, disabled bool) lipgloss.Style {

@@ -193,6 +193,8 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Selected = 0
 		m.FileSelected = 0
 		m.FileFocused = true
+		m.FileViewHeight = m.fileListHeight()
+		m.FileScrollOff = 0
 		m.StorageFiles = nil
 		m.StorageErr = nil
 		m.StorageLoading = true
@@ -303,6 +305,7 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.StorageFiles = msg.files
 		m.StorageErr = msg.err
 		m.FileSelected = 0
+		m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, 0)
 		return m, nil
 
 	case configLoadedMsg:
@@ -332,6 +335,8 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.WindowWidth = msg.Width
 		m.WindowHeight = msg.Height
+		m.FileViewHeight = m.fileListHeight()
+		m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, m.FileScrollOff)
 		return m, nil
 
 	case tea.KeyPressMsg:
@@ -388,7 +393,7 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return pages.SelectEditServerPageMsg{} }
 			case "remove":
 				return m, func() tea.Msg { return pages.RemoveServerPageMsg{} }
-			// TODO: "edit"
+				// TODO: "edit"
 			}
 		case "ctrl+c":
 			m.Quitting = true
@@ -420,6 +425,9 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 	case "tab":
 		if len(m.StorageFiles) > 0 || !m.StorageLoading {
 			m.FileFocused = !m.FileFocused
+			if m.FileFocused {
+				m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, m.FileScrollOff)
+			}
 		}
 
 	case "up", "k":
@@ -427,6 +435,7 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 			if m.FileSelected > 0 {
 				m.FileSelected--
 			}
+			m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, m.FileScrollOff)
 		} else {
 			if m.Selected > 0 {
 				m.Selected--
@@ -438,6 +447,7 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 			if m.FileSelected < len(m.StorageFiles)-1 {
 				m.FileSelected++
 			}
+			m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, m.FileScrollOff)
 		} else {
 			if m.Selected < len(m.MenuItems)-1 {
 				m.Selected++

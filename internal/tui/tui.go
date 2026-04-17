@@ -79,19 +79,19 @@ func (m TUIInterface) fileListHeight() int {
 		return 0 // unconstrained until first WindowSizeMsg
 	}
 
-	// Card chrome overhead (border top+bottom, inner padding top+bottom)
-	const cardOverhead = 6
-	// Header (title + subtitle + margins)
-	const headerLines = 4
-	// Footer (border + content)
+	// Card chrome overhead (rounded border + compact inner vertical padding)
+	const cardOverhead = 2
+	// Header (title + subtitle)
+	const headerLines = 2
+	// Footer (top border + content)
 	const footerLines = 2
 	// Server actions menu rows (Send / Clean All)
 	actionLines := len(m.MenuItems)
 	if actionLines < 1 {
 		actionLines = 2
 	}
-	// File section chrome: section margin+border+padding + local-dir label+margin
-	const fileSectionOverhead = 5
+	// File section chrome: top border + local-dir label
+	const fileSectionOverhead = 2
 
 	used := cardOverhead + headerLines + footerLines + actionLines + fileSectionOverhead
 	available := h - used

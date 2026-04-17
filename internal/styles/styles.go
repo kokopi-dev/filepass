@@ -10,16 +10,14 @@ var (
 			Width(52)
 
 	CardInnerStyle = lipgloss.NewStyle().
-			Padding(1, 3)
+			Padding(0, 3)
 
 	CardTitleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("86")).
-			Bold(true).
-			MarginBottom(1)
+			Bold(true)
 
 	CardSubtitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("245")).
-				MarginBottom(1)
+				Foreground(lipgloss.Color("245"))
 
 	// Menu items
 	menuItemBase = lipgloss.NewStyle().
@@ -41,55 +39,45 @@ var (
 	// Form fields
 	fieldLabelRequired = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("75")).
-				Bold(true).
-				MarginTop(1)
+				Bold(true)
 
 	fieldLabelOptional = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("245")).
-				MarginTop(1)
+				Foreground(lipgloss.Color("245"))
 
 	FieldLegendStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("240")).
-				Italic(true).
-				MarginTop(1)
+				Italic(true)
 
 	// Buttons
 	buttonActive = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("232")).
 			Background(lipgloss.Color("75")).
 			Bold(true).
-			Padding(0, 2).
-			MarginTop(1)
+			Padding(0, 2)
 
 	buttonInactive = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("232")).
 			Background(lipgloss.Color("240")).
-			Padding(0, 2).
-			MarginTop(1)
+			Padding(0, 2)
 
 	buttonLocked = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("238")).
 			Background(lipgloss.Color("235")).
-			Padding(0, 2).
-			MarginTop(1)
+			Padding(0, 2)
 
 	// Status lines
 	StatusOKStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("86")).
-			MarginTop(1)
+			Foreground(lipgloss.Color("86"))
 
 	StatusWarnStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("221")).
-			MarginTop(1)
+			Foreground(lipgloss.Color("221"))
 
 	StatusErrStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("203")).
-			MarginTop(1)
+			Foreground(lipgloss.Color("203"))
 
 	CleanWarningStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("203")).
 				Bold(true).
-				MarginBottom(1).
 				Width(44)
 
 	// Footer
@@ -129,8 +117,6 @@ var (
 				BorderTop(true).
 				BorderStyle(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color("237")).
-				MarginTop(1).
-				PaddingTop(1).
 				Width(44)
 
 	StorageEmptyStyle = lipgloss.NewStyle().
@@ -150,23 +136,19 @@ var (
 			SetString("▸ ")
 
 	FilenameLabelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("243")).
-				MarginBottom(1)
+				Foreground(lipgloss.Color("243"))
 
 	// Local directory label (above file list and in picker breadcrumb)
 	LocalDirStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("243")).
-			Italic(true).
-			MarginBottom(1)
+			Italic(true)
 
 	// File picker
 	PickerQueryStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("75")).
-				MarginBottom(1)
+				Foreground(lipgloss.Color("75"))
 
 	PickerQueryBlurredStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("240")).
-				MarginBottom(1)
+				Foreground(lipgloss.Color("240"))
 
 	pickerItemBase = lipgloss.NewStyle().
 			PaddingLeft(4).

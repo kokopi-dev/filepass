@@ -39,17 +39,19 @@ type TUIInterface struct {
 	WindowWidth  int
 	WindowHeight int
 	// server actions page
-	ActiveServer   string
-	LocalDir       string // user's cwd, destination for received files
-	StorageFiles   []string
-	StorageLoading bool
-	StorageErr     error
-	FileSelected   int  // cursor within StorageFiles
-	FileFocused    bool // true = ↑↓ drives file list, false = action menu
-	FileScrollOff  int  // first visible row in StorageFiles list
-	FileViewHeight int  // available visible rows for StorageFiles list
+	ActiveServer    string
+	LocalDir        string // user's cwd, destination for received files
+	StorageFiles    []string
+	StorageLoading  bool
+	StorageErr      error
+	FileSelected    int          // cursor within StorageFiles
+	FileFocused     bool         // true = ↑↓ drives file list, false = action menu
+	FileScrollOff   int          // first visible row in StorageFiles list
+	FileViewHeight  int          // available visible rows for StorageFiles list
+	FileMultiSelect map[int]bool // selected rows in StorageFiles
 	// file action page
 	ActiveFile    string
+	ActiveFiles   []string
 	FileOpLoading bool
 	FileOpErr     error
 	FileOpSuccess string
@@ -65,10 +67,11 @@ type TUIInterface struct {
 
 func NewTUIInterface(store *services.ServicesStore, localDir string) TUIInterface {
 	return TUIInterface{
-		Services:  store,
-		Page:      pageHome,
-		MenuItems: pages.HomeMenuItems(),
-		LocalDir:  localDir,
+		Services:        store,
+		Page:            pageHome,
+		MenuItems:       pages.HomeMenuItems(),
+		LocalDir:        localDir,
+		FileMultiSelect: make(map[int]bool),
 	}
 }
 

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -70,6 +71,62 @@ func deleteFileCmd(store *services.ServicesStore, serverName, filename string) t
 			return fileOpMsg{op: "delete", err: err}
 		}
 		return fileOpMsg{op: "delete", success: "✓  Deleted \"" + filename + "\""}
+	}
+}
+
+func getFilesCmd(store *services.ServicesStore, serverName string, filenames []string, destDir string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return fileOpMsg{op: "get", err: err}
+		}
+
+		success := 0
+		var failed []string
+		for _, name := range filenames {
+			if err := storage.Get(name, destDir); err != nil {
+				failed = append(failed, fmt.Sprintf("%s: %v", name, err))
+				continue
+			}
+			success++
+		}
+
+		if len(failed) > 0 {
+			if success == 0 {
+				return fileOpMsg{op: "get", err: fmt.Errorf("download failed for %d file(s): %s", len(failed), strings.Join(failed, "; "))}
+			}
+			return fileOpMsg{op: "get", err: fmt.Errorf("downloaded %d/%d file(s), failed %d: %s", success, len(filenames), len(failed), strings.Join(failed, "; "))}
+		}
+
+		return fileOpMsg{op: "get", success: fmt.Sprintf("✓  Downloaded %d file(s)", success)}
+	}
+}
+
+func deleteFilesCmd(store *services.ServicesStore, serverName string, filenames []string) tea.Cmd {
+	return func() tea.Msg {
+		storage, err := store.NewStorageService(serverName)
+		if err != nil {
+			return fileOpMsg{op: "delete", err: err}
+		}
+
+		success := 0
+		var failed []string
+		for _, name := range filenames {
+			if err := storage.Delete(name); err != nil {
+				failed = append(failed, fmt.Sprintf("%s: %v", name, err))
+				continue
+			}
+			success++
+		}
+
+		if len(failed) > 0 {
+			if success == 0 {
+				return fileOpMsg{op: "delete", err: fmt.Errorf("delete failed for %d file(s): %s", len(failed), strings.Join(failed, "; "))}
+			}
+			return fileOpMsg{op: "delete", err: fmt.Errorf("deleted %d/%d file(s), failed %d: %s", success, len(filenames), len(failed), strings.Join(failed, "; "))}
+		}
+
+		return fileOpMsg{op: "delete", success: fmt.Sprintf("✓  Deleted %d file(s)", success)}
 	}
 }
 
@@ -160,6 +217,28 @@ func (m TUIInterface) nextSelectable(from, dir int) int {
 	return from
 }
 
+func (m TUIInterface) selectedStorageFiles() []string {
+	if len(m.FileMultiSelect) == 0 || len(m.StorageFiles) == 0 {
+		return nil
+	}
+	idxs := make([]int, 0, len(m.FileMultiSelect))
+	for idx, selected := range m.FileMultiSelect {
+		if !selected {
+			continue
+		}
+		if idx < 0 || idx >= len(m.StorageFiles) {
+			continue
+		}
+		idxs = append(idxs, idx)
+	}
+	sort.Ints(idxs)
+	files := make([]string, 0, len(idxs))
+	for _, idx := range idxs {
+		files = append(files, m.StorageFiles[idx])
+	}
+	return files
+}
+
 func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -195,6 +274,9 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.FileFocused = true
 		m.FileViewHeight = m.fileListHeight()
 		m.FileScrollOff = 0
+		m.FileMultiSelect = make(map[int]bool)
+		m.ActiveFiles = nil
+		m.ActiveFile = ""
 		m.StorageFiles = nil
 		m.StorageErr = nil
 		m.StorageLoading = true
@@ -202,7 +284,16 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case pages.FileActionPageMsg:
 		m.Page = pageFileAction
-		m.ActiveFile = msg.Filename
+		targets := msg.Filenames
+		if len(targets) == 0 && msg.Filename != "" {
+			targets = []string{msg.Filename}
+		}
+		m.ActiveFiles = append([]string(nil), targets...)
+		if len(m.ActiveFiles) > 0 {
+			m.ActiveFile = m.ActiveFiles[0]
+		} else {
+			m.ActiveFile = ""
+		}
 		m.MenuItems = pages.FileActionItems()
 		m.Selected = 0
 		m.FileOpLoading = false
@@ -305,6 +396,7 @@ func (m TUIInterface) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.StorageFiles = msg.files
 		m.StorageErr = msg.err
 		m.FileSelected = 0
+		m.FileMultiSelect = make(map[int]bool)
 		m.FileScrollOff = syncScroll(m.FileSelected, len(m.StorageFiles), m.FileViewHeight, 0)
 		return m, nil
 
@@ -454,12 +546,27 @@ func (m TUIInterface) updateServerActions(msg tea.KeyPressMsg) (tea.Model, tea.C
 			}
 		}
 
+	case "space":
+		if m.FileFocused && len(m.StorageFiles) > 0 {
+			if m.FileMultiSelect == nil {
+				m.FileMultiSelect = make(map[int]bool)
+			}
+			idx := m.FileSelected
+			m.FileMultiSelect[idx] = !m.FileMultiSelect[idx]
+			if !m.FileMultiSelect[idx] {
+				delete(m.FileMultiSelect, idx)
+			}
+		}
+
 	case "enter":
 		if m.FileFocused && len(m.StorageFiles) > 0 {
-			file := m.StorageFiles[m.FileSelected]
+			targets := m.selectedStorageFiles()
+			if len(targets) == 0 {
+				targets = []string{m.StorageFiles[m.FileSelected]}
+			}
 			server := m.ActiveServer
 			return m, func() tea.Msg {
-				return pages.FileActionPageMsg{ServerName: server, Filename: file}
+				return pages.FileActionPageMsg{ServerName: server, Filenames: targets}
 			}
 		}
 		server := m.ActiveServer
@@ -502,18 +609,30 @@ func (m TUIInterface) updateFileAction(msg tea.KeyPressMsg) (tea.Model, tea.Cmd)
 		}
 	case "enter":
 		server := m.ActiveServer
-		file := m.ActiveFile
+		targets := m.ActiveFiles
+		if len(targets) == 0 && m.ActiveFile != "" {
+			targets = []string{m.ActiveFile}
+		}
+		if len(targets) == 0 {
+			return m, nil
+		}
 		switch m.MenuItems[m.Selected].Key {
 		case "get":
 			m.FileOpLoading = true
 			m.FileOpErr = nil
 			m.FileOpSuccess = ""
-			return m, getFileCmd(m.Services, server, file, m.LocalDir)
+			if len(targets) == 1 {
+				return m, getFileCmd(m.Services, server, targets[0], m.LocalDir)
+			}
+			return m, getFilesCmd(m.Services, server, targets, m.LocalDir)
 		case "delete":
 			m.FileOpLoading = true
 			m.FileOpErr = nil
 			m.FileOpSuccess = ""
-			return m, deleteFileCmd(m.Services, server, file)
+			if len(targets) == 1 {
+				return m, deleteFileCmd(m.Services, server, targets[0])
+			}
+			return m, deleteFilesCmd(m.Services, server, targets)
 		}
 	case "ctrl+c":
 		m.Quitting = true

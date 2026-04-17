@@ -38,6 +38,9 @@ func (m TUIInterface) subtitle() string {
 		}
 		return "Server"
 	case pageFileAction:
+		if len(m.ActiveFiles) > 1 {
+			return fmt.Sprintf("%d files selected", len(m.ActiveFiles))
+		}
 		return m.ActiveFile
 	case pageSend:
 		return "Send File"
@@ -116,7 +119,9 @@ func (m TUIInterface) View() tea.View {
 			footerSep() +
 			footerHint("↑↓", "navigate") +
 			footerSep() +
-			footerHint("enter", "select") +
+			footerHint("space", "select") +
+			footerSep() +
+			footerHint("enter", "actions") +
 			footerSep() +
 			footerHint("esc", "back")
 	case pageFileAction:
@@ -236,7 +241,12 @@ func (m TUIInterface) viewServerActions() string {
 		for i := start; i < end; i++ {
 			f := m.StorageFiles[i]
 			active := m.FileFocused && i == m.FileSelected
-			fileRows = append(fileRows, styles.FileItemStyle(active).Render(f))
+			checked := m.FileMultiSelect[i]
+			mark := "[ ] "
+			if checked {
+				mark = "[✓] "
+			}
+			fileRows = append(fileRows, styles.FileItemStyle(active).Render(mark+f))
 		}
 	}
 	fileList := lipgloss.JoinVertical(lipgloss.Left, fileRows...)
@@ -254,7 +264,11 @@ func (m TUIInterface) viewServerActions() string {
 }
 
 func (m TUIInterface) viewFileAction() string {
-	filenameLabel := styles.FilenameLabelStyle.Render(m.ActiveFile)
+	label := m.ActiveFile
+	if len(m.ActiveFiles) > 1 {
+		label = fmt.Sprintf("%d file(s) selected", len(m.ActiveFiles))
+	}
+	filenameLabel := styles.FilenameLabelStyle.Render(label)
 
 	var menuRows []string
 	for i, item := range m.MenuItems {
